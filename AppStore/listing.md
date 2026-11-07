@@ -4,7 +4,9 @@ Text for App Store Connect. Keep it here so it's easy to update with each releas
 
 ## Name
 
-VPN Bar
+VPN Bar - Quick Toggle
+
+"VPN Bar" and "VPNBar" were already taken. The app still shows as VPN Bar on the Mac.
 
 ## Subtitle (30 characters max)
 
