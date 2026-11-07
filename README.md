@@ -21,7 +21,7 @@ Open `VPNBar.xcodeproj` in Xcode and run the **VPNBar** scheme. Signing is set t
 To change the app icon, edit `Design/make-icon.swift`, then run:
 
 ```bash
-swift Design/make-icon.swift App/Assets.xcassets/AppIcon.appiconset
+swift Design/make-icon.swift Shared/AppIcon.icon
 ```
 
 ## Releasing
