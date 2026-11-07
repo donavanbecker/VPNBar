@@ -97,8 +97,10 @@ private struct VPNMenu: View {
 
         Divider()
 
-        Button("Check for Updates…") { updater.checkForUpdates() }
-            .disabled(!updater.canCheckForUpdates)
+        if AppUpdater.isAvailable {
+            Button("Check for Updates…") { updater.checkForUpdates() }
+                .disabled(!updater.canCheckForUpdates)
+        }
 
         Button("Quit VPN Bar") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")

@@ -1,5 +1,24 @@
-import Combine
 import Observation
+
+#if APPSTORE
+
+/// The Mac App Store delivers updates, so this build has no updater of its own.
+@MainActor
+@Observable
+final class AppUpdater {
+    static let shared = AppUpdater()
+    static let isAvailable = false
+
+    let canCheckForUpdates = false
+
+    private init() {}
+
+    func checkForUpdates() {}
+}
+
+#else
+
+import Combine
 import Sparkle
 
 /// Checks for new versions in the background and offers to install them.
@@ -7,6 +26,7 @@ import Sparkle
 @Observable
 final class AppUpdater {
     static let shared = AppUpdater()
+    static let isAvailable = true
 
     private(set) var canCheckForUpdates = false
 
@@ -44,3 +64,5 @@ final class AppUpdater {
 private final class UserDriverDelegate: NSObject, SPUStandardUserDriverDelegate {
     var supportsGentleScheduledUpdateReminders: Bool { true }
 }
+
+#endif
