@@ -14,6 +14,12 @@ Requires macOS 26 or later.
 
 To add a toggle to Control Center, open **Control Center > Edit Controls** and add **VPN**. Add it once per VPN and choose which VPN each toggle controls. A toggle with no VPN chosen follows the one you used most recently.
 
+## Features
+
+- **Notifications:** VPN Bar tells you when a VPN connects, disconnects or drops. Turn this off with **Notify When VPNs Connect or Drop**.
+- **Reconnect Dropped VPNs:** when a VPN you connected through VPN Bar disconnects without you turning it off there, VPN Bar tries to reconnect it three times. This is off until you turn it on. Disconnect from VPN Bar or Control Center so it isn't treated as a drop.
+- **Keyboard shortcut:** press Control-Option-V in any app to connect or disconnect the VPN you used most recently. Turn this off with **Toggle Last VPN with ⌃⌥V**.
+
 ## Development
 
 Open `VPNBar.xcodeproj` in Xcode and run the **VPNBar** scheme. Signing is set to your Apple Development certificate and team `GV6ATLNHPQ`.
