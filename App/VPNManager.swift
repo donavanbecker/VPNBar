@@ -12,6 +12,15 @@ final class VPNManager {
     private(set) var connections: [VPNConnection] = []
     private(set) var errors: [String: String] = [:]
 
+    /// When each connected VPN was first seen connected. macOS doesn't report this,
+    /// so it's saved to carry across app restarts.
+    private(set) var connectedSince: [String: Date] {
+        didSet { defaults.set(connectedSince, forKey: Key.connectedSince) }
+    }
+
+    /// The current time, updated once a minute so connection times stay current.
+    private(set) var now = Date.now
+
     var anyConnected: Bool { connections.contains { $0.status == .connected } }
 
     /// How long a VPN may ignore a request, without reporting a transition, before it counts as failed.
@@ -33,15 +42,16 @@ final class VPNManager {
     @ObservationIgnored private var up: Set<String>?
     @ObservationIgnored private var reconnectTasks: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var reconnecting: Set<String> = []
-    @ObservationIgnored private var lastAuthorizationCheck = Date.now
 
     @ObservationIgnored private let defaults = UserDefaults.standard
 
     private enum Key {
         static let keepConnected = "keepConnected"
+        static let connectedSince = "connectedSince"
     }
 
     private init() {
+        connectedSince = defaults.dictionary(forKey: Key.connectedSince) as? [String: Date] ?? [:]
         keepConnected = Set(defaults.stringArray(forKey: Key.keepConnected) ?? [])
     }
 
@@ -110,10 +120,13 @@ final class VPNManager {
         }
     }
 
-    /// Once a minute, picks up notification permission changes made in System Settings.
+    /// Once a minute, moves the clock on and picks up notification permission
+    /// changes made in System Settings.
     private func tick() async {
-        guard Date.now.timeIntervalSince(lastAuthorizationCheck) >= 60 else { return }
-        lastAuthorizationCheck = .now
+        let current = Date.now
+        guard Int(current.timeIntervalSinceReferenceDate / 60) != Int(now.timeIntervalSinceReferenceDate / 60)
+        else { return }
+        now = current
         await Notifier.shared.refreshAuthorization()
     }
 
@@ -125,7 +138,7 @@ final class VPNManager {
         apply(reported)
     }
 
-    /// Reacts to VPNs coming up or going down.
+    /// Records connection times and reacts to VPNs coming up or going down.
     private func noteChanges(in reported: [VPNConnection]) {
         let isFirstReport = up == nil
         var up = self.up ?? []
@@ -135,8 +148,15 @@ final class VPNManager {
             switch connection.status {
             case .connected where !up.contains(id):
                 up.insert(id)
-                if !isFirstReport { didConnect(connection) }
+                if isFirstReport {
+                    // Connected before VPN Bar started: keep a saved time if there is one.
+                    if connectedSince[id] == nil { connectedSince[id] = .now }
+                } else {
+                    connectedSince[id] = .now
+                    didConnect(connection)
+                }
             case .disconnected:
+                if connectedSince[id] != nil { connectedSince[id] = nil }
                 if up.remove(id) != nil, !isFirstReport { didDisconnect(connection) }
             default:
                 break
@@ -146,6 +166,7 @@ final class VPNManager {
         // Forget VPNs that were removed from macOS.
         let ids = Set(reported.map(\.id))
         up.formIntersection(ids)
+        if !connectedSince.keys.allSatisfy(ids.contains) { connectedSince = connectedSince.filter { ids.contains($0.key) } }
         if !keepConnected.isSubset(of: ids) { keepConnected.formIntersection(ids) }
         for id in reconnectTasks.keys where !ids.contains(id) { stopReconnecting(id) }
 

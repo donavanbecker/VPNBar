@@ -41,8 +41,14 @@ private struct VPNMenu: View {
             Text("No VPNs configured")
         }
 
+        // Read here rather than inside ForEach, so a new minute redraws the menu
+        // even when no VPN changed.
+        let now = manager.now
+        let connectedSince = manager.connectedSince
+
         ForEach(manager.connections) { connection in
-            Toggle(title(for: connection), isOn: binding(for: connection))
+            Toggle(title(for: connection, connectedSince: connectedSince[connection.id], now: now),
+                   isOn: binding(for: connection))
                 .disabled(!connection.isEnabled || connection.status.isTransitioning)
 
             if let error = manager.errors[connection.id] {
@@ -98,10 +104,23 @@ private struct VPNMenu: View {
             .keyboardShortcut("q")
     }
 
-    private func title(for connection: VPNConnection) -> String {
-        connection.status.isTransitioning
-            ? "\(connection.name) (\(connection.status.label))"
-            : connection.name
+    private func title(for connection: VPNConnection, connectedSince: Date?, now: Date) -> String {
+        if connection.status.isTransitioning {
+            return "\(connection.name) (\(connection.status.label))"
+        }
+        if connection.status == .connected, let connectedSince {
+            return "\(connection.name) · \(Self.duration(from: connectedSince, to: now))"
+        }
+        return connection.name
+    }
+
+    /// A short duration such as "<1m", "12m", "1h 12m" or "2d 3h".
+    static func duration(from start: Date, to end: Date) -> String {
+        let minutes = max(0, Int(end.timeIntervalSince(start) / 60))
+        let (days, hours) = (minutes / 1440, minutes / 60 % 24)
+        if days > 0 { return "\(days)d \(hours)h" }
+        if minutes >= 60 { return "\(hours)h \(minutes % 60)m" }
+        return minutes == 0 ? "<1m" : "\(minutes)m"
     }
 
     private func binding(for connection: VPNConnection) -> Binding<Bool> {

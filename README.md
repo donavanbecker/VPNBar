@@ -16,6 +16,7 @@ To add a toggle to Control Center, open **Control Center > Edit Controls** and a
 
 ## Features
 
+- **Connection time:** the menu shows how long each VPN has been connected, counted from when VPN Bar first saw it connect.
 - **Notifications:** VPN Bar tells you when a VPN connects, disconnects or drops. Turn this off with **Notify When VPNs Connect or Drop**.
 - **Reconnect Dropped VPNs:** when a VPN you connected through VPN Bar disconnects without you turning it off there, VPN Bar tries to reconnect it three times. This is off until you turn it on. Disconnect from VPN Bar or Control Center so it isn't treated as a drop.
 - **Keyboard shortcut:** press Control-Option-V in any app to connect or disconnect the VPN you used most recently. Turn this off with **Toggle Last VPN with ⌃⌥V**.
