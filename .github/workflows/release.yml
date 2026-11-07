@@ -19,7 +19,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Read version from tag
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
+          if [[ -z "$SPARKLE_PRIVATE_KEY" ]]; then
+            echo "::error::The SPARKLE_PRIVATE_KEY secret isn't set, so this release couldn't update installed copies"
+            exit 1
+          fi
           if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Tag must look like v1.2.0, got $TAG"
             exit 1
@@ -56,7 +62,9 @@ jobs:
             OTHER_CODE_SIGN_FLAGS="--timestamp" \
             MARKETING_VERSION="$VERSION" \
             CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER"
-          echo "APP=$RUNNER_TEMP/build/Build/Products/Release/VPN Bar.app" >> "$GITHUB_ENV"
+          APP="$RUNNER_TEMP/build/Build/Products/Release/VPN Bar.app"
+          Scripts/sign-app.sh "$APP" "Developer ID Application"
+          echo "APP=$APP" >> "$GITHUB_ENV"
 
       - name: Notarize
         env:
@@ -73,13 +81,42 @@ jobs:
           xcrun stapler staple "$APP"
           spctl --assess --type execute --verbose "$APP"
 
+      - name: Package and sign update
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          ASSET="$RUNNER_TEMP/VPN-Bar-$VERSION.zip"
+          ditto -c -k --keepParent "$APP" "$ASSET"
+          SIGNATURE="$(echo "$SPARKLE_PRIVATE_KEY" | \
+            "$RUNNER_TEMP/build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update" \
+            --ed-key-file - "$ASSET")"
+          cat > "$RUNNER_TEMP/appcast.xml" <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+            <channel>
+              <title>VPN Bar</title>
+              <item>
+                <title>Version $VERSION</title>
+                <pubDate>$(LC_ALL=C date -u '+%a, %d %b %Y %H:%M:%S +0000')</pubDate>
+                <sparkle:version>$GITHUB_RUN_NUMBER</sparkle:version>
+                <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+                <sparkle:fullReleaseNotesLink>https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG</sparkle:fullReleaseNotesLink>
+                <enclosure url="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/VPN-Bar-$VERSION.zip" $SIGNATURE type="application/octet-stream"/>
+              </item>
+            </channel>
+          </rss>
+          EOF
+          xmllint --noout "$RUNNER_TEMP/appcast.xml"
+          echo "ASSET=$ASSET" >> "$GITHUB_ENV"
+
+      # Sparkle reads appcast.xml from the latest release, so publishing is what offers the update.
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ASSET="$RUNNER_TEMP/VPN-Bar-$VERSION.zip"
-          ditto -c -k --keepParent "$APP" "$ASSET"
-          gh release create "$TAG" "$ASSET" --title "VPN Bar $VERSION" --generate-notes
+          gh release create "$TAG" "$ASSET" "$RUNNER_TEMP/appcast.xml" \
+            --title "VPN Bar $VERSION" --generate-notes
 
       - name: Remove signing material
         if: always()

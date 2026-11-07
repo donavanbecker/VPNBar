@@ -45,3 +45,10 @@ git push origin v1.0.0
 | `NOTARY_KEY_P8` | An App Store Connect API key (`.p8`), base64-encoded |
 | `NOTARY_KEY_ID` | That API key's ID |
 | `NOTARY_ISSUER_ID` | Your App Store Connect issuer ID |
+| `SPARKLE_PRIVATE_KEY` | The private half of the update signing key, whose public half is `SUPublicEDKey` in `Config/App-Info.plist` |
+
+### Updates
+
+Release builds check daily for new versions using [Sparkle](https://sparkle-project.org) and offer to install them. Each release publishes an `appcast.xml` describing itself, and the app reads it from the latest release.
+
+Back up the update signing key. If it's lost, installed copies can't verify new versions, and everyone would need to download the next version by hand.

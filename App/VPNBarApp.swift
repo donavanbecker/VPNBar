@@ -5,11 +5,12 @@ import SwiftUI
 struct VPNBarApp: App {
     init() {
         VPNManager.shared.start()
+        _ = AppUpdater.shared
     }
 
     var body: some Scene {
         MenuBarExtra {
-            VPNMenu(manager: .shared)
+            VPNMenu(manager: .shared, updater: .shared)
         } label: {
             VPNMenuIcon(manager: .shared)
         }
@@ -28,6 +29,7 @@ private struct VPNMenuIcon: View {
 
 private struct VPNMenu: View {
     let manager: VPNManager
+    let updater: AppUpdater
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -65,6 +67,9 @@ private struct VPNMenu: View {
             }
 
         Divider()
+
+        Button("Check for Updates…") { updater.checkForUpdates() }
+            .disabled(!updater.canCheckForUpdates)
 
         Button("Quit VPN Bar") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
